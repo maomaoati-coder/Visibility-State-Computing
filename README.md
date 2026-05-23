@@ -123,7 +123,7 @@ Together they constitute: **Visibility-Class Computing** — computing systems w
 
 **Timestamp:** 2026-05-23T02:04:25Z (UTC)
 **Inventor:** Mao Guanghui (毛广辉)
-**Repository:** github.com/[username]/visibility-state-computing
+**Repository:** github.com/maomaoati-coder/Visibility-State-Computing
 **First Public Disclosure:** This README commit
 
 ---
