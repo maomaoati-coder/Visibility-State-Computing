@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VSC Dynamics Simulator · Visibility-State Computing</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Bebas+Neue&display=swap');
+:root {
+  --bg:#080c10;--surface:#0d1117;--panel:#0f151d;--border:#1e2733;
+  --text:#c0ccd8;--muted:#4a5568;--dim:#1a2330;
+  --accent:#e6c547;--blue:#4da8da;--green:#3ecf78;--red:#e05c5c;--fog:#7ba8be;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;min-height:100vh;overflow-x:hidden;}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 22px;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap;gap:8px;}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:.12em;color:var(--accent);}
+.logo span{color:var(--blue);}
+.doc-id{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:3px 8px;border:1px solid var(--border);}
+.status{display:flex;align-items:center;gap:8px;}
+.sdot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.stxt{font-size:9px;color:var(--muted);letter-spacing:.08em;}
+.main{display:grid;grid-template-columns:292px 1fr;min-height:calc(100vh - 48px);}
+/* SIDEBAR */
+.sidebar{background:var(--panel);border-right:1px solid var(--border);padding:18px 14px;overflow-y:auto;}
+.ptitle{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:14px;padding-bottom:7px;border-bottom:1px solid var(--dim);}
+.epi{border-left:2px solid var(--accent);padding:8px 12px;margin-bottom:18px;background:rgba(230,197,71,.03);}
+.epi-text{font-size:10px;font-style:italic;color:var(--fog);line-height:1.6;}
+.pgroup{margin-bottom:20px;}
+.pglabel{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:11px;display:flex;align-items:center;gap:8px;}
+.pglabel::after{content:'';flex:1;height:1px;background:var(--dim);}
+.prow{margin-bottom:13px;}
+.phdr{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px;}
+.pname{color:var(--blue);font-size:11px;}
+.psym{color:var(--muted);font-size:10px;font-style:italic;}
+.pval{color:var(--accent);font-size:12px;font-weight:500;min-width:88px;text-align:right;}
+input[type=range]{width:100%;height:3px;-webkit-appearance:none;appearance:none;background:var(--dim);outline:none;cursor:pointer;border-radius:0;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;background:var(--accent);cursor:pointer;border-radius:0;}
+input[type=range]::-moz-range-thumb{width:11px;height:11px;background:var(--accent);cursor:pointer;border-radius:0;border:none;}
+.punit{font-size:9px;color:var(--muted);margin-top:2px;text-align:right;}
+.bc-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.bc-wrap{display:flex;flex-direction:column;gap:4px;}
+.bc-label{font-size:9px;color:var(--muted);}
+.bc-input{background:var(--dim);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:5px 7px;width:100%;outline:none;}
+.bc-input:focus{border-color:rgba(77,168,218,.4);}
+.mode-badge{margin:12px 0;padding:10px 12px;border:1px solid;display:flex;align-items:center;gap:9px;transition:all .3s;}
+.mode-badge.hi{border-color:rgba(77,168,218,.3);background:rgba(77,168,218,.04);}
+.mode-badge.lo{border-color:rgba(62,207,120,.3);background:rgba(62,207,120,.04);}
+.mind{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.mode-badge.hi .mind{background:var(--blue);}
+.mode-badge.lo .mind{background:var(--green);}
+.mtext{font-size:10px;line-height:1.5;}
+.mname{font-weight:500;letter-spacing:.07em;}
+.mdesc{color:var(--muted);font-size:9.5px;}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:4px;}
+.mcard{background:var(--dim);padding:9px 11px;}
+.mlabel{font-size:9px;color:var(--muted);letter-spacing:.07em;margin-bottom:3px;}
+.mval{font-size:14px;font-weight:500;}
+.munit{font-size:9px;color:var(--muted);}
+.mcard.ac .mval{color:var(--accent);}
+.mcard.bl .mval{color:var(--blue);}
+.mcard.gr .mval{color:var(--green);}
+.mcard.rd .mval{color:var(--red);}
+.ctrl-row{display:flex;gap:7px;margin-top:14px;}
+.btn{flex:1;padding:9px 0;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;border:1px solid;transition:all .2s;background:transparent;}
+.btn-run{border-color:var(--green);color:var(--green);}
+.btn-run:hover,.btn-run.active{background:var(--green);color:var(--bg);}
+.btn-rst{border-color:var(--border);color:var(--muted);}
+.btn-rst:hover{border-color:var(--muted);color:var(--text);}
+/* CANVAS PANEL */
+.cpanel{display:flex;flex-direction:column;padding:18px 22px;gap:14px;}
+.rstrip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.rcard{background:var(--panel);border:1px solid var(--border);padding:11px 13px;}
+.rlabel{font-size:9px;color:var(--muted);letter-spacing:.07em;margin-bottom:3px;}
+.rval{font-size:17px;font-weight:500;line-height:1;}
+.rval.v{color:var(--blue);}
+.rval.tau{color:var(--accent);}
+.rval.ct{color:var(--fog);}
+.rval.tc{color:var(--green);}
+.rsub{font-size:9px;color:var(--muted);margin-top:2px;}
+.plot-hdr{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;}
+.plot-title{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--text);}
+.legend{display:flex;gap:16px;}
+.li{display:flex;align-items:center;gap:5px;font-size:9.5px;color:var(--muted);}
+.ldot{width:10px;height:2px;}
+.ldot.curve{background:var(--blue);}
+.ldot.thresh{background:var(--accent);}
+.ldot.win{background:var(--green);height:10px;opacity:.35;}
+.cwrap{position:relative;flex:1;min-height:310px;}
+#plotCanvas{width:100%;height:100%;display:block;}
+.splots{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.mini-wrap{background:var(--panel);border:1px solid var(--border);padding:11px;}
+.mini-title{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+canvas.mini{width:100%;height:76px;display:block;}
+.bbar{border-top:1px solid var(--border);padding:7px 22px;display:flex;align-items:center;gap:16px;background:var(--surface);flex-wrap:wrap;}
+.bbi{font-size:9px;color:var(--muted);display:flex;align-items:center;gap:5px;}
+.bbi span{color:var(--dim);}
+.bbsep{color:var(--dim);}
+</style>
+</head>
+<body>
+<div class="header">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div class="logo">VSC<span>·</span>SIM</div>
+    <div class="doc-id">VSC-PROT-2026-001 · Unit Dynamics Simulator</div>
+  </div>
+  <div class="status">
+    <div class="sdot"></div>
+    <div class="stxt">CLOCKLESS PHYSICAL RELAXATION — V(t) = V_min + (V_max−V_min)·exp(−t/τ)</div>
+  </div>
+</div>
+
+<div class="main">
+<div class="sidebar">
+  <div class="ptitle">Microchannel Parameters</div>
+  <div class="epi">
+    <div class="epi-text">"The fog was never just weather.<br>It was an unread register."</div>
+  </div>
+
+  <!-- GEOMETRY -->
+  <div class="pgroup">
+    <div class="pglabel">Channel Geometry</div>
+    <div class="prow">
+      <div class="phdr"><span class="pname">Length L</span><span class="psym">↔</span><span class="pval" id="vL">1.00 mm</span></div>
+      <input type="range" id="sL" min="0.1" max="10" step="0.05" value="1.0">
+      <div class="punit">0.1 – 10 mm</div>
+    </div>
+    <div class="prow">
+      <div class="phdr"><span class="pname">Width w</span><span class="psym">↔</span><span class="pval" id="vw">100 μm</span></div>
+      <input type="range" id="sw" min="10" max="500" step="5" value="100">
+      <div class="punit">10 – 500 μm</div>
+    </div>
+    <div class="prow">
+      <div class="phdr"><span class="pname">Height h</span><span class="psym">↕</span><span class="pval" id="vh">50 μm</span></div>
+      <input type="range" id="sh" min="5" max="200" step="2" value="50">
+      <div class="punit">5 – 200 μm</div>
+    </div>
+  </div>
+
+  <!-- FLUID -->
+  <div class="pgroup">
+    <div class="pglabel">Fluid Properties</div>
+    <div class="prow">
+      <div class="phdr"><span class="pname">Viscosity η</span><span class="psym">~</span><span class="pval" id="veta">18.0 μPa·s</span></div>
+      <input type="range" id="seta" min="5" max="100" step="0.5" value="18">
+      <div class="punit">air ≈ 18 μPa·s · range 5–100</div>
+    </div>
+    <div class="prow">
+      <div class="phdr"><span class="pname">Pressure ΔP</span><span class="psym">↓</span><span class="pval" id="vdP">100 Pa</span></div>
+      <input type="range" id="sdP" min="1" max="1000" step="1" value="100">
+      <div class="punit">1 – 1000 Pa</div>
+    </div>
+    <div class="prow">
+      <div class="phdr"><span class="pname">Knudsen Kn</span><span class="psym">Kn</span><span class="pval" id="vKn">0.010</span></div>
+      <input type="range" id="sKn" min="0.001" max="1" step="0.001" value="0.010">
+      <div class="punit">λ_mfp / L_char · slip correction</div>
+    </div>
+  </div>
+
+  <!-- BC -->
+  <div class="pgroup">
+    <div class="pglabel">Boundary Conditions</div>
+    <div class="bc-row">
+      <div class="bc-wrap"><div class="bc-label">V_max (clear)</div><input class="bc-input" id="bVmax" type="number" min="0.1" max="1" step="0.05" value="1.0"></div>
+      <div class="bc-wrap"><div class="bc-label">V_min (fog)</div><input class="bc-input" id="bVmin" type="number" min="0" max="0.5" step="0.01" value="0.05"></div>
+    </div>
+    <div class="prow">
+      <div class="phdr"><span class="pname">Threshold ε</span><span class="psym">ε</span><span class="pval" id="veps">0.020</span></div>
+      <input type="range" id="seps" min="0.01" max="0.10" step="0.005" value="0.020">
+      <div class="punit">sensor contrast threshold</div>
+    </div>
+  </div>
+
+  <div class="mode-badge hi" id="mBadge">
+    <div class="mind"></div>
+    <div class="mtext">
+      <div class="mname" id="mName">HIGH IMPEDANCE</div>
+      <div class="mdesc" id="mDesc">Long τ · temporal storage / deep integration</div>
+    </div>
+  </div>
+
+  <div class="ptitle" style="margin-top:14px;">Computed Output</div>
+  <div class="mgrid">
+    <div class="mcard ac"><div class="mlabel">τ — RELAX.</div><div class="mval" id="mTau">—</div><div class="munit" id="mTauU">ms</div></div>
+    <div class="mcard gr"><div class="mlabel">T_calc</div><div class="mval" id="mTcalc">—</div><div class="munit" id="mTcalcU">ms</div></div>
+    <div class="mcard bl"><div class="mlabel">β_ex (rel.)</div><div class="mval" id="mBeta">—</div><div class="munit">m⁻¹</div></div>
+    <div class="mcard rd"><div class="mlabel">FREQ EQUIV.</div><div class="mval" id="mFreq">—</div><div class="munit" id="mFreqU">Hz</div></div>
+  </div>
+  <div class="ctrl-row">
+    <button class="btn btn-run" id="btnRun" onclick="toggleRun()">▶  Run</button>
+    <button class="btn btn-rst" onclick="resetSim()">↺  Reset</button>
+  </div>
+</div>
+
+<!-- CANVAS PANEL -->
+<div class="cpanel">
+  <div class="rstrip">
+    <div class="rcard"><div class="rlabel">V(t) — VISIBILITY</div><div class="rval v" id="rVt">1.0000</div><div class="rsub">analog output register</div></div>
+    <div class="rcard"><div class="rlabel">τ — RELAX. CONST</div><div class="rval tau" id="rTau">— ms</div><div class="rsub">intrinsic clock · no circuit</div></div>
+    <div class="rcard"><div class="rlabel">C(t) — CONTRAST</div><div class="rval ct" id="rCt">1.0000</div><div class="rsub">PD array spatial contrast</div></div>
+    <div class="rcard"><div class="rlabel">T_calc — WINDOW</div><div class="rval tc" id="rTcalc">— ms</div><div class="rsub">computation cycle</div></div>
+  </div>
+
+  <div class="plot-hdr">
+    <div class="plot-title">V(t) — Visibility Relaxation · Physical Relaxation Clock</div>
+    <div class="legend">
+      <div class="li"><div class="ldot curve"></div>V(t)</div>
+      <div class="li"><div class="ldot thresh"></div>ε threshold</div>
+      <div class="li"><div class="ldot win"></div>T_calc window</div>
+    </div>
+  </div>
+
+  <div class="cwrap"><canvas id="plotCanvas"></canvas></div>
+
+  <div class="splots">
+    <div class="mini-wrap"><div class="mini-title">β_ex(t) — Extinction Coefficient</div><canvas class="mini" id="betaCanvas"></canvas></div>
+    <div class="mini-wrap"><div class="mini-title">C(t) — Spatial Interference Contrast (PD Array)</div><canvas class="mini" id="cCanvas"></canvas></div>
+  </div>
+
+  <div class="bbar">
+    <div class="bbi">Mao Guanghui (毛广辉)<span>Independent Inventor</span></div>
+    <div class="bbsep">·</div>
+    <div class="bbi">VSC-PROT-2026-001 v1.1<span>2026-05-23</span></div>
+    <div class="bbsep">·</div>
+    <div class="bbi">SHA256<span>9446df82…c394</span></div>
+    <div class="bbsep">·</div>
+    <div class="bbi">MGOVL v2.0<span>© 2026</span></div>
+  </div>
+</div>
+</div>
+
+<script>
+let running=false, animId=null, lastTs=null;
+let tSim=0, tMax=1;
+let P={};
+let hist={t:[],V:[],B:[],C:[]};
+
+function g(id){return document.getElementById(id);}
+
+function fmtT(s){
+  if(s<1e-6) return [(s*1e9).toFixed(2),'ns'];
+  if(s<1e-3) return [(s*1e6).toFixed(2),'μs'];
+  if(s<1)    return [(s*1e3).toFixed(2),'ms'];
+  return [s.toFixed(3),'s'];
+}
+function fmtF(s){
+  const f=1/s;
+  if(f>1e6) return [(f/1e6).toFixed(2),'MHz'];
+  if(f>1e3) return [(f/1e3).toFixed(2),'kHz'];
+  return [f.toFixed(1),'Hz'];
+}
+function fmtTStr(s){ const [v,u]=fmtT(s); return v+' '+u; }
+
+function calcParams(){
+  const L   = +g('sL').value * 1e-3;
+  const w   = +g('sw').value * 1e-6;
+  const h   = +g('sh').value * 1e-6;
+  const eta = +g('seta').value * 1e-6;
+  const dP  = +g('sdP').value;
+  const Kn  = +g('sKn').value;
+  const Vmax= +g('bVmax').value;
+  const Vmin= +g('bVmin').value;
+  const eps = +g('seps').value;
+  const tau = (eta * L * L) / (dP * w * h * Kn);
+  const arg = (Vmax-Vmin)/(eps*Vmax);
+  const Tcalc = arg>1 ? tau*Math.log(arg) : tau*0.5;
+  const beta0 = -Math.log(Math.max(Vmin,0.001));
+  return {L,w,h,eta,dP,Kn,Vmax,Vmin,eps,tau,Tcalc,beta0};
+}
+
+function Vt(t,p){ return p.Vmin+(p.Vmax-p.Vmin)*Math.exp(-t/p.tau); }
+function Bt(t,p){ return -Math.log(Math.max(Vt(t,p),0.001)); }
+function Ct(t,p){ return Vt(t,p); }
+
+function updateSidebar(){
+  const L=+g('sL').value, w=+g('sw').value, h=+g('sh').value;
+  const eta=+g('seta').value, dP=+g('sdP').value, Kn=+g('sKn').value, eps=+g('seps').value;
+  g('vL').textContent=L.toFixed(2)+' mm';
+  g('vw').textContent=w.toFixed(0)+' μm';
+  g('vh').textContent=h.toFixed(0)+' μm';
+  g('veta').textContent=eta.toFixed(1)+' μPa·s';
+  g('vdP').textContent=dP.toFixed(0)+' Pa';
+  g('vKn').textContent=Kn.toFixed(3);
+  g('veps').textContent=eps.toFixed(3);
+
+  P=calcParams();
+  tMax=P.Tcalc*3.5;
+
+  const tms=P.tau*1e3;
+  const badge=g('mBadge');
+  if(tms>10){badge.className='mode-badge hi';g('mName').textContent='HIGH IMPEDANCE';g('mDesc').textContent='Long τ · temporal storage / deep integration';}
+  else if(tms>1){badge.className='mode-badge hi';g('mName').textContent='MID IMPEDANCE';g('mDesc').textContent='Balanced τ · general-purpose time-series';}
+  else{badge.className='mode-badge lo';g('mName').textContent='LOW IMPEDANCE';g('mDesc').textContent='Short τ · sub-ms high-frequency decoupling';}
+
+  const [tv,tu]=fmtT(P.tau); g('mTau').textContent=tv; g('mTauU').textContent=tu;
+  const [tcv,tcu]=fmtT(P.Tcalc); g('mTcalc').textContent=tcv; g('mTcalcU').textContent=tcu;
+  g('mBeta').textContent=(-Math.log(Math.max(P.Vmin,0.001))).toFixed(2);
+  const [fv,fu]=fmtF(P.Tcalc); g('mFreq').textContent=fv; g('mFreqU').textContent=fu;
+  g('rTau').textContent=fmtTStr(P.tau);
+  g('rTcalc').textContent=fmtTStr(P.Tcalc);
+
+  if(!running) drawAll();
+}
+
+function setupC(canvas){
+  const dpr=window.devicePixelRatio||1;
+  const r=canvas.getBoundingClientRect();
+  canvas.width=r.width*dpr; canvas.height=r.height*dpr;
+  const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  return {ctx,W:r.width,H:r.height};
+}
+
+function drawMain(){
+  const canvas=g('plotCanvas');
+  const {ctx,W,H}=setupC(canvas);
+  const pl=56,pr=20,pt=22,pb=38;
+  const cW=W-pl-pr, cH=H-pt-pb;
+  ctx.fillStyle='#080c10'; ctx.fillRect(0,0,W,H);
+  const p=P;
+  const xOf=t=>pl+(t/tMax)*cW;
+  const yOf=v=>pt+cH-(v*cH);
+
+  // grid
+  ctx.strokeStyle='#141e2a'; ctx.lineWidth=1;
+  for(let i=0;i<=5;i++){const y=yOf(i/5);ctx.beginPath();ctx.moveTo(pl,y);ctx.lineTo(pl+cW,y);ctx.stroke();}
+  for(let i=0;i<=8;i++){const x=pl+(i/8)*cW;ctx.beginPath();ctx.moveTo(x,pt);ctx.lineTo(x,pt+cH);ctx.stroke();}
+
+  // T_calc window
+  const xTc=xOf(p.Tcalc);
+  if(xTc>pl&&xTc<pl+cW){
+    ctx.fillStyle='rgba(62,207,120,0.07)'; ctx.fillRect(pl,pt,xTc-pl,cH);
+    ctx.strokeStyle='rgba(62,207,120,0.35)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(xTc,pt);ctx.lineTo(xTc,pt+cH);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='rgba(62,207,120,.65)'; ctx.font='9px JetBrains Mono';
+    ctx.fillText('T_calc',xTc+4,pt+13);
+  }
+
+  // τ marker
+  const xTau=xOf(p.tau);
+  if(xTau>pl&&xTau<pl+cW){
+    ctx.strokeStyle='rgba(230,197,71,0.2)'; ctx.lineWidth=1; ctx.setLineDash([3,6]);
+    ctx.beginPath();ctx.moveTo(xTau,pt);ctx.lineTo(xTau,pt+cH);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='rgba(230,197,71,.4)'; ctx.font='9px JetBrains Mono';
+    ctx.fillText('τ',xTau+3,pt+26);
+  }
+
+  // ε threshold
+  const yEps=yOf(p.eps*p.Vmax);
+  ctx.strokeStyle='rgba(230,197,71,0.55)'; ctx.lineWidth=1; ctx.setLineDash([6,4]);
+  ctx.beginPath();ctx.moveTo(pl,yEps);ctx.lineTo(pl+cW,yEps);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(230,197,71,.7)'; ctx.font='9px JetBrains Mono';
+  ctx.fillText('ε·V_max',pl+4,yEps-4);
+
+  // ghost full curve
+  ctx.strokeStyle='rgba(77,168,218,0.13)'; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  for(let i=0;i<=300;i++){
+    const t=(i/300)*tMax, v=Vt(t,p), x=xOf(t), y=yOf(v);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  // animated curve
+  if(hist.t.length>1){
+    ctx.strokeStyle='#4da8da'; ctx.lineWidth=2.5;
+    ctx.shadowColor='rgba(77,168,218,.5)'; ctx.shadowBlur=10;
+    ctx.beginPath();
+    for(let i=0;i<hist.t.length;i++){
+      const x=xOf(hist.t[i]),y=yOf(hist.V[i]);
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.stroke(); ctx.shadowBlur=0;
+    // cursor dot
+    const n=hist.t.length-1, cx=xOf(hist.t[n]), cy=yOf(hist.V[n]);
+    ctx.fillStyle='#4da8da'; ctx.beginPath(); ctx.arc(cx,cy,4,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(77,168,218,.2)'; ctx.beginPath(); ctx.arc(cx,cy,9,0,Math.PI*2); ctx.fill();
+  }
+
+  // axes
+  ctx.strokeStyle='#253040'; ctx.lineWidth=1; ctx.setLineDash([]);
+  ctx.beginPath();ctx.moveTo(pl,pt);ctx.lineTo(pl,pt+cH);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(pl,pt+cH);ctx.lineTo(pl+cW,pt+cH);ctx.stroke();
+  // y labels
+  ctx.fillStyle='#3a4a5a'; ctx.font='9px JetBrains Mono'; ctx.textAlign='right';
+  for(let i=0;i<=5;i++) ctx.fillText((i/5).toFixed(1),pl-5,yOf(i/5)+3);
+  // x labels
+  ctx.textAlign='center';
+  for(let i=0;i<=8;i++){
+    const t=(i/8)*tMax; ctx.fillText(fmtTStr(t),xOf(t),pt+cH+16);
+  }
+  // axis title
+  ctx.fillStyle='#2a3a4a'; ctx.textAlign='center';
+  ctx.save(); ctx.translate(13,pt+cH/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText('V(t)',0,0); ctx.restore();
+  ctx.fillText('time →', pl+cW/2, H-5);
+}
+
+function drawMini(id, vals, tArr, col, yMin, yMax){
+  const canvas=g(id);
+  const {ctx,W,H}=setupC(canvas);
+  const pl=4,pr=4,pt=4,pb=4, cW=W-pl-pr, cH=H-pt-pb;
+  ctx.fillStyle='#0a1018'; ctx.fillRect(0,0,W,H);
+  const xOf=t=>pl+(t/tMax)*cW;
+  const yOf=v=>pt+cH-((v-yMin)/(yMax-yMin))*cH;
+  const clamp=v=>Math.max(yMin,Math.min(yMax,v));
+  // ghost
+  ctx.strokeStyle=col.replace('rgb','rgba').replace(')',',0.15)'); ctx.lineWidth=1;
+  ctx.beginPath();
+  for(let i=0;i<=200;i++){
+    const t=(i/200)*tMax,v=clamp(id==='betaCanvas'?Bt(t,P):Ct(t,P));
+    const x=xOf(t),y=yOf(v);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  if(tArr.length<2) return;
+  ctx.strokeStyle=col; ctx.lineWidth=1.8;
+  ctx.beginPath();
+  for(let i=0;i<tArr.length;i++){
+    const x=xOf(tArr[i]),y=yOf(clamp(vals[i]));
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+}
+
+function drawAll(){
+  drawMain();
+  const bmax=Math.max(3,(-Math.log(Math.max(P.Vmin,.001)))*1.15);
+  drawMini('betaCanvas',hist.B,hist.t,'rgb(88,166,255)',0,bmax);
+  drawMini('cCanvas',hist.C,hist.t,'rgb(123,168,190)',0,1);
+}
+
+let raf=null;
+function tick(ts){
+  if(!running) return;
+  if(!lastTs) lastTs=ts;
+  const dt=(ts-lastTs)/1000;
+  lastTs=ts;
+  tSim+=dt;
+  const v=Vt(tSim,P), b=Bt(tSim,P), c=Ct(tSim,P);
+  hist.t.push(tSim); hist.V.push(v); hist.B.push(b); hist.C.push(c);
+  if(hist.t.length>600){hist.t.shift();hist.V.shift();hist.B.shift();hist.C.shift();}
+  g('rVt').textContent=v.toFixed(4);
+  g('rCt').textContent=c.toFixed(4);
+  drawAll();
+  if(tSim>=tMax*1.05){ stopRun(); return; }
+  raf=requestAnimationFrame(tick);
+}
+
+function stopRun(){
+  running=false; lastTs=null; if(raf) cancelAnimationFrame(raf);
+  g('btnRun').textContent='▶  Run'; g('btnRun').classList.remove('active');
+}
+function toggleRun(){
+  if(running){ stopRun(); return; }
+  P=calcParams(); tMax=P.Tcalc*3.5;
+  hist={t:[],V:[],B:[],C:[]}; tSim=0; lastTs=null;
+  running=true;
+  g('btnRun').textContent='‖  Pause'; g('btnRun').classList.add('active');
+  raf=requestAnimationFrame(tick);
+}
+function resetSim(){
+  stopRun(); tSim=0; hist={t:[],V:[],B:[],C:[]};
+  g('rVt').textContent='1.0000'; g('rCt').textContent='1.0000';
+  updateSidebar();
+}
+
+['sL','sw','sh','seta','sdP','sKn','seps'].forEach(id=>{
+  g(id).addEventListener('input',()=>{
+    if(running) stopRun();
+    tSim=0; hist={t:[],V:[],B:[],C:[]};
+    updateSidebar();
+  });
+});
+['bVmax','bVmin'].forEach(id=>{
+  g(id).addEventListener('change',()=>{
+    if(running) stopRun();
+    tSim=0; hist={t:[],V:[],B:[],C:[]};
+    updateSidebar();
+  });
+});
+window.addEventListener('resize',()=>{ if(!running) drawAll(); });
+window.addEventListener('load',()=>{ setTimeout(updateSidebar,80); });
+</script>
+</body>
+  </html>
