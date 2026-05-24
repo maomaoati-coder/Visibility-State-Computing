@@ -116,15 +116,31 @@ Together they constitute: **Visibility-Class Computing** — computing systems w
 
 ---
 
+## Interactive Simulator · 交互式仿真器
+
+**Live Demo:** https://maomaoati-coder.github.io/Visibility-State-Computing/
+
+Adjust microchannel parameters (L, w, h, η, ΔP, Kn) and observe the V(t) relaxation curve evolve in real time.
+The simulation demonstrates the clockless physical relaxation property of VSC:
+τ is determined entirely by the medium — no external clock circuit required.
+
 ## Prior Art Record
 
-**SHA256 (concept document v1.0):**
-2ed2a2b80f7fe0ee91c75adf905e9d1434628deb4e1f2219030f4b12503f3c2a
+**SHA256 (document):**
+
+**v1.0 concept ·** 2ed2a2b80f7fe0ee91c75adf905e9d1434628deb4e1f2219030f4b12503f3c2a
+
+**v1.1 framework ·** 9446df823bbfe37c427aa3ed3e9b9ba0f9ba42d8403e889c306af63d6b11c394
 
 **Timestamp:** 2026-05-23T02:04:25Z (UTC)
+
 **Inventor:** Mao Guanghui (毛广辉)
-**Repository:** github.com/maomaoati-coder/Visibility-State-Computing
+
 **First Public Disclosure:** This README commit
+
+**Repository:** github.com/maomaoati-coder/Visibility-State-Computing
+
+**Pages:** maomaoati-coder.github.io/Visibility-State-Computing/
 
 ---
 
