@@ -1,8 +1,11 @@
 # Visibility-State Computing (VSC) — 雾度计算
 
 **Author:** Mao Guanghui (毛广辉)
+
 **Concept Origin:** 2026-05-23
+
 **Status:** Conceptual Stage v1.0
+
 **License:** MGOVL v2.0 (Mao Guanghui Open View License)
 
 ---
